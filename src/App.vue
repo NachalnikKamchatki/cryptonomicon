@@ -133,8 +133,8 @@
             </g>
           </svg>
         </button>
-      </section>
-    </div>
+      </section>      
+    </div>    
   </div>
 </template>
 
@@ -202,5 +202,3 @@ export default {
 
 };
 </script>
-
-<style src="./app.css"></style>
