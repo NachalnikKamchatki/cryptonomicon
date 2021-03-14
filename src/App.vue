@@ -169,7 +169,10 @@
 
 <script>
 
-import { subscribeToTicker, unsubscribeFromTicker } from './api'
+import {
+  subscribeToTicker,
+  unsubscribeFromTicker  
+} from './ws_api'
 
 export default {
   name: "App",
@@ -189,7 +192,8 @@ export default {
   },
 
   created() {
-    
+
+       
     const windowData = Object.fromEntries(
       new URL(window.location).searchParams.entries()
     );
@@ -268,8 +272,12 @@ export default {
       this.tickers
         .filter(t => t.name === tickerName)
         .forEach(t => {
+          if (t === this.selectedTicker) {
+            this.graph.push(price);
+          }
           t.price = price;
         });
+      
     },
 
     formatPrice(price) {
@@ -297,6 +305,7 @@ export default {
       // if (unique.length == 0) {
       //   this.tickers = [...this.tickers, currentTicker];         
       // }
+      
       this.ticker = "";
       this.filter = "";
       this.tickers = [...this.tickers, currentTicker];
@@ -343,7 +352,7 @@ export default {
         document.title,
         `${window.location.pathname}?filter=${value.filter}&page=${value.page}`
       )
-    }
-  }
+    },
+  },
 };
 </script>
