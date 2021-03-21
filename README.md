@@ -1,5 +1,7 @@
 # cryptonomikon
 
+## the project was created based on the lessons of the course https://www.youtube.com/watch?v=4XTy6ucbLNg&list=PLvTBThJr861yMBhpKafII3HZLAYujuNWw
+
 ## Project setup
 ```
 npm install
