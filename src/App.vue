@@ -25,7 +25,7 @@
                 placeholder="Например DOGE"
               />
             </div>
-            <div class="flex bg-white shadow-md p-1 rounded-md shadow-md flex-wrap">
+            <div class="flex bg-white p-1 rounded-md shadow-md flex-wrap">
               <span class="inline-flex items-center px-2 m-1 rounded-md text-xs font-medium bg-gray-300 text-gray-800 cursor-pointer">
                 BTC
               </span>
@@ -39,7 +39,7 @@
                 CHD
               </span>
             </div>
-            <div class="text-sm text-red-600">Такой стикер уже добавлен</div>
+            <div v-if="!uniqueTicker" class="text-sm text-red-600">Такой стикер уже добавлен</div>
           </div>
         </div>
         
@@ -131,11 +131,11 @@
         <h3 class="text-lg leading-6 font-medium text-gray-900 my-8">
           {{ selectedTicker.name }} - USD
         </h3>
-        <div class="flex items-end border-gray-600 border-b border-l h-64">
-          <div 
+        <div class="flex items-end border-gray-600 border-b border-l h-64" ref="graph">
+          <div             
             v-for="(bar, idx) in normalizedGraph"
             :key="idx"
-            :style="{ height: `${bar}%` }"
+            :style="{ height: `${bar}%` }"            
             class="bg-purple-800 border w-10"
           ></div>          
         </div>
@@ -169,190 +169,212 @@
 
 <script>
 
-import {
-  subscribeToTicker,
-  unsubscribeFromTicker  
-} from './ws_api'
+  import {
+    subscribeToTicker,
+    unsubscribeFromTicker  
+  } from './ws_api'
 
-export default {
-  name: "App",
+  export default {
+    name: "App",
 
-  data() {
-    return {
-      tickers: [],
-      filter: "",
-      ticker: "",
-
-      selectedTicker: null,   
-
-      graph: [],
-
-      page: 1,      
-    };
-  },
-
-  created() {
-
-       
-    const windowData = Object.fromEntries(
-      new URL(window.location).searchParams.entries()
-    );
-
-    const VALID_KEYS = ["filter", "page"];
-
-    VALID_KEYS.forEach(key => {
-      if (windowData[key]) {
-        this[key] = windowData[key];
-      }
-    });
-
-    const tickersData = localStorage.getItem("cryptonomicon-list");
-
-    if (tickersData) {
-      this.tickers = JSON.parse(tickersData);    
-      this.tickers.forEach(ticker => {
-        subscribeToTicker(ticker.name, newPrice => 
-          this.updateTicker(ticker.name, newPrice)
-        );
-      });
-    }
-    setInterval(this.updateTickers, 5000);
-  },
-
-  computed: {
-
-    normalizedGraph() {
-      const maxVal = Math.max(...this.graph)
-      const minVal = Math.min(...this.graph)
-      if (maxVal == minVal) {
-        return this.graph.map(() => 50)
-      }
-      return this.graph.map(
-        price => 5 + ((price - minVal) * 95) / (maxVal - minVal)
-      )
-    },
-    
-    upperTicker() {
-      return this.ticker.toUpperCase();
-    },
-
-    startIndex() {
-      return (this.page - 1) * 6;
-    },
-
-    endIndex() {
-      return this.page * 6;
-    },
-
-    filteredTickers() {      
-      return this.tickers.filter(ticker => 
-        ticker.name.includes(this.filter)
-      );      
-    },
-
-    paginatedTickers() {
-      return this.filteredTickers.slice(this.startIndex, this.endIndex);
-    },
-
-    hasNextPage() {
-      return this.filteredTickers.length > this.endIndex;
-    },
-
-    pageStateOptions() {
+    data() {
       return {
-        page: this.page,
-        filter: this.filter,
-      }
-    }
-  },
+        tickers: [],
+        filter: "",
+        ticker: "",
+        uniqueTicker: true,
+        selectedTicker: null,   
 
-  methods: {
+        graph: [],
+        maxGraphElements: 1,
 
-    updateTicker(tickerName, price) {
-      this.tickers
-        .filter(t => t.name === tickerName)
-        .forEach(t => {
-          if (t === this.selectedTicker) {
-            this.graph.push(price);
-          }
-          t.price = price;
-        });
-      
-    },
-
-    formatPrice(price) {
-      if (price === "-") {
-        return price;
-      }
-      return price > 1 ? price.toFixed(2): price.toPrecision(3);
-    },
-
-    select(ticker) {
-      console.log(ticker);
-      this.selectedTicker = ticker;
-    },
-
-    addTicker() {
-      const currentTicker = {
-        name: this.ticker,
-        price: "-",
+        page: 1,      
       };
-      
-      // const unique = this.tickers.filter(ticker =>
-      //   ticker.name == currentTicker.name
-      // );
-      
-      // if (unique.length == 0) {
-      //   this.tickers = [...this.tickers, currentTicker];         
-      // }
-      
-      this.ticker = "";
-      this.filter = "";
-      this.tickers = [...this.tickers, currentTicker];
-      
-      subscribeToTicker(currentTicker.name, newPrice => 
-          this.updateTicker(currentTicker.name, newPrice));      
     },
 
-    deleteTicker(tickerToRemove) {
-      this.tickers = this.tickers.filter(t => t !== tickerToRemove);      
-      if (this.selectedTicker === tickerToRemove) {
-        this.selectedTicker = null;
+    created() {
+
+      
+      const windowData = Object.fromEntries(
+        new URL(window.location).searchParams.entries()
+      );
+
+      const VALID_KEYS = ["filter", "page"];
+
+      VALID_KEYS.forEach(key => {
+        if (windowData[key]) {
+          this[key] = windowData[key];
+        }
+      });
+
+      const tickersData = localStorage.getItem("cryptonomicon-list");
+
+      if (tickersData) {
+        this.tickers = JSON.parse(tickersData);    
+        this.tickers.forEach(ticker => {
+          subscribeToTicker(ticker.name, newPrice => 
+            this.updateTicker(ticker.name, newPrice)
+          );
+        });
       }
-      unsubscribeFromTicker(tickerToRemove.name);
-      
+      setInterval(this.updateTickers, 5000);
     },
 
+    mounted() {
+      window.addEventListener("resize", this.calculateMaxGraphElements);
+    },
+
+    beforeUnmount() {
+      window.removeEventListener("resize", this.calculateMaxGraphElements);
+    },
+
+    computed: {
+      
+      normalizedGraph() {
+        const maxVal = Math.max(...this.graph)
+        const minVal = Math.min(...this.graph)
+        if (maxVal == minVal) {
+          return this.graph.map(() => 50)
+        }
+        return this.graph.map(
+          price => 5 + ((price - minVal) * 95) / (maxVal - minVal)
+        )
+      },
+      
+      upperTicker() {
+        return this.ticker.toUpperCase();
+      },
+
+      startIndex() {
+        return (this.page - 1) * 6;
+      },
+
+      endIndex() {
+        return this.page * 6;
+      },
+
+      filteredTickers() {      
+        return this.tickers.filter(ticker => 
+          ticker.name.includes(this.filter)
+        );      
+      },
+
+      paginatedTickers() {
+        return this.filteredTickers.slice(this.startIndex, this.endIndex);
+      },
+
+      hasNextPage() {
+        return this.filteredTickers.length > this.endIndex;
+      },
+
+      pageStateOptions() {
+        return {
+          page: this.page,
+          filter: this.filter,
+        }
+      }
+    },
+
+    methods: {
+      calculateMaxGraphElements() {
+        if (!this.$refs.graph) {
+          return;
+        }
+        this.maxGraphElements = this.$refs.graph.clientWidth / 38;
+      },
+
+      updateTicker(tickerName, price) {
+        this.tickers
+          .filter(t => t.name === tickerName)
+          .forEach(t => {
+            if (t === this.selectedTicker) {
+              this.graph.push(price);
+              console.log(this.graph.length)
+              while (this.graph.length > this.maxGraphElements) {
+                this.graph.shift();
+              }
+            }
+            t.price = price;
+          });
+        
+      },
+
+      formatPrice(price) {
+        if (price === "-") {
+          return price;
+        }
+        return price > 1 ? price.toFixed(2): price.toPrecision(3);
+      },
+
+      select(ticker) {
+        this.selectedTicker = ticker;
+        this.graph = []
+        this.$nextTick( () => {
+          this.calculateMaxGraphElements();
+        });
+      },
+
+      addTicker() {
+        const currentTicker = {
+          name: this.ticker,
+          price: "-",
+        };
+        
+        const unique = this.tickers.filter(ticker =>
+          ticker.name.toUpperCase() == currentTicker.name.toUpperCase()
+        );
+        
+        if (unique.length == 0) {
+          this.tickers = [...this.tickers, currentTicker];
+          subscribeToTicker(currentTicker.name, newPrice => 
+            this.updateTicker(currentTicker.name, newPrice));
+          this.uniqueTicker = true;
+        }
+        else {
+          this.uniqueTicker = false;
+        }
+        
+        this.ticker = "";
+        this.filter = "";                  
+      },
+
+      deleteTicker(tickerToRemove) {
+        this.tickers = this.tickers.filter(t => t !== tickerToRemove);      
+        if (this.selectedTicker === tickerToRemove) {
+          this.selectedTicker = null;
+        }
+        unsubscribeFromTicker(tickerToRemove.name);      
+      },
+    },
     
-  },
-  
-  watch: {
+    watch: {
 
-    selectedTicker() {
-      this.graph = [];
-    },
+      selectedTicker() {
+        this.graph = [];
+        this.calculateMaxGraphElements();
+      },
 
-    tickers() {
-      localStorage.setItem("cryptonomicon-list", JSON.stringify(this.tickers));
-    },
+      tickers() {
+        localStorage.setItem("cryptonomicon-list", JSON.stringify(this.tickers));
+      },
 
-    paginatedTickers() {
-      if (this.paginatedTickers.length === 0 && this.page > 1) {
-        this.page -= 1;
-      }
-    },
+      paginatedTickers() {
+        if (this.paginatedTickers.length === 0 && this.page > 1) {
+          this.page -= 1;
+        }
+      },
 
-    filter() {
-      this.page = 1;      
-    },
+      filter() {
+        this.page = 1;      
+      },
 
-    pageStateOptions(value) {
-      window.history.pushState(
-        null,
-        document.title,
-        `${window.location.pathname}?filter=${value.filter}&page=${value.page}`
-      )
+      pageStateOptions(value) {
+        window.history.pushState(
+          null,
+          document.title,
+          `${window.location.pathname}?filter=${value.filter}&page=${value.page}`
+        )
+      },
     },
-  },
-};
+  };
 </script>
